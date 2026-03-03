@@ -140,6 +140,13 @@ function App() {
     setTimeout(() => setOrderComplete(false), 3000);
   };
 
+  const resetProgress = () => {
+    setTriedOrigins([]);
+    setOrderHistory([]);
+    localStorage.removeItem('aura_tried_origins');
+    localStorage.removeItem('aura_order_history');
+  };
+
   // Lock body scroll when modals are open
   useEffect(() => {
     if (selectedProduct || isCartOpen || isCheckoutOpen || isProfileOpen) {
@@ -248,6 +255,7 @@ function App() {
           onClose={() => setIsProfileOpen(false)}
           triedOrigins={triedOrigins}
           orderHistory={orderHistory}
+          onReset={resetProgress}
         />
       )}
 

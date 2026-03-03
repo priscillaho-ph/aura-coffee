@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, MapPin, Award, Coffee, Globe, Compass, Heart, Crown, Sun, Moon, Snowflake, Zap, Repeat, Sunrise, ChevronRight } from 'lucide-react';
+import { X, MapPin, Award, Coffee, Globe, Compass, Heart, Crown, Sun, Moon, Snowflake, Zap, Repeat, Sunrise, ChevronRight, RotateCcw } from 'lucide-react';
 import CoffeeMap from './CoffeeMap';
 import { coffeeRegions, badges, tierColors, originToCountry } from '../data/coffeeRegions';
 import { origins } from '../data/origins';
@@ -19,9 +19,10 @@ const badgeIcons = {
   zap: Zap,
 };
 
-function BeanJourney({ onClose, triedOrigins = [], orderHistory = [] }) {
+function BeanJourney({ onClose, triedOrigins = [], orderHistory = [], onReset }) {
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [activeTab, setActiveTab] = useState('map');
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   // Calculate tried countries from tried origins
   const triedCountries = [...new Set(
@@ -343,7 +344,56 @@ function BeanJourney({ onClose, triedOrigins = [], orderHistory = [] }) {
               </div>
             </div>
           )}
+
+          {/* Reset Progress Button */}
+          {(triedOrigins.length > 0 || orderHistory.length > 0) && (
+            <div className="mt-6 pt-4 border-t border-charcoal-100">
+              <button
+                onClick={() => setShowResetConfirm(true)}
+                className="w-full py-3 px-4 rounded-xl text-sm text-charcoal-500 hover:text-charcoal-700 hover:bg-white transition-premium btn-press flex items-center justify-center gap-2"
+              >
+                <RotateCcw className="w-4 h-4" />
+                Reset Progress
+              </button>
+            </div>
+          )}
         </div>
+
+        {/* Reset Confirmation Modal */}
+        {showResetConfirm && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center p-6">
+            <div
+              className="absolute inset-0 bg-charcoal-900/40"
+              onClick={() => setShowResetConfirm(false)}
+            />
+            <div className="relative bg-white w-full max-w-xs rounded-2xl p-6 text-center animate-scale-in shadow-soft-lg">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <RotateCcw className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="font-display text-lg text-charcoal-900">Reset Progress?</h3>
+              <p className="text-charcoal-500 text-sm mt-2">
+                This will clear all your tried origins, order history, and badges. This cannot be undone.
+              </p>
+              <div className="mt-6 space-y-2">
+                <button
+                  onClick={() => {
+                    onReset?.();
+                    setShowResetConfirm(false);
+                  }}
+                  className="w-full py-3 bg-red-600 text-white rounded-xl font-medium text-sm transition-premium hover:bg-red-700 btn-press"
+                >
+                  Reset Everything
+                </button>
+                <button
+                  onClick={() => setShowResetConfirm(false)}
+                  className="w-full py-3 bg-cream-100 text-charcoal-700 rounded-xl font-medium text-sm transition-premium hover:bg-cream-200 btn-press"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Country Detail Modal */}
         {selectedCountry && (
