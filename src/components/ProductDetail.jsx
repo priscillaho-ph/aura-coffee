@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { X, Minus, Plus, MapPin } from 'lucide-react';
 import { milkOptions, sweetenerOptions, sizeOptions } from '../data/products';
+import { origins } from '../data/origins';
+import OriginModal from './OriginModal';
 
 // Monochromatic sage palette with subtle variations
 const noteColors = {
@@ -38,8 +40,10 @@ function ProductDetail({ product, onClose, onAddToCart }) {
   const [selectedSweetener, setSelectedSweetener] = useState(sweetenerOptions[0]);
   const [selectedSize, setSelectedSize] = useState(sizeOptions[1]); // Default to medium
   const [quantity, setQuantity] = useState(1);
+  const [showOrigin, setShowOrigin] = useState(false);
 
   const isFood = product.category === 'food';
+  const originData = product.origin ? origins[product.origin] : null;
 
   const totalPrice =
     (product.price + selectedMilk.price + selectedSweetener.price + selectedSize.price) * quantity;
@@ -83,8 +87,21 @@ function ProductDetail({ product, onClose, onAddToCart }) {
           />
           <h2 className="font-display text-2xl text-charcoal-900">{product.name}</h2>
 
-          {/* Origin badge */}
-          {product.origin && (
+          {/* Origin badge - clickable */}
+          {product.origin && originData && (
+            <button
+              onClick={() => setShowOrigin(true)}
+              className="inline-flex items-center gap-1.5 mt-2 text-charcoal-500 text-xs hover:text-sage-600 transition-colors btn-press group"
+            >
+              <MapPin className="w-3 h-3 group-hover:text-sage-600" />
+              <span className="uppercase tracking-wide underline decoration-dotted underline-offset-2">
+                {product.origin}
+              </span>
+            </button>
+          )}
+
+          {/* Origin badge - non-clickable fallback */}
+          {product.origin && !originData && (
             <div className="inline-flex items-center gap-1.5 mt-2 text-charcoal-500 text-xs">
               <MapPin className="w-3 h-3" />
               <span className="uppercase tracking-wide">{product.origin}</span>
@@ -243,6 +260,14 @@ function ProductDetail({ product, onClose, onAddToCart }) {
           </button>
         </div>
       </div>
+
+      {/* Origin Modal */}
+      {showOrigin && originData && (
+        <OriginModal
+          origin={originData}
+          onClose={() => setShowOrigin(false)}
+        />
+      )}
     </div>
   );
 }
