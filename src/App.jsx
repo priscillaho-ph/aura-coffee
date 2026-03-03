@@ -7,7 +7,28 @@ import ProductGrid from './components/ProductGrid';
 import ProductDetail from './components/ProductDetail';
 import Cart from './components/Cart';
 import Checkout from './components/Checkout';
+import BeanJourney from './components/BeanJourney';
 import { products, recentOrders } from './data/products';
+import { badges, originToCountry } from './data/coffeeRegions';
+
+// Helper to get data from localStorage
+const getStoredData = (key, defaultValue) => {
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : defaultValue;
+  } catch {
+    return defaultValue;
+  }
+};
+
+// Helper to save data to localStorage
+const saveStoredData = (key, value) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // localStorage not available
+  }
+};
 
 function App() {
   const [activeCategory, setActiveCategory] = useState('espresso');
@@ -15,7 +36,12 @@ function App() {
   const [cartItems, setCartItems] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+
+  // Bean journey tracking
+  const [triedOrigins, setTriedOrigins] = useState(() => getStoredData('aura_tried_origins', []));
+  const [orderHistory, setOrderHistory] = useState(() => getStoredData('aura_order_history', []));
 
   const filteredProducts = products.filter(p => p.category === activeCategory);
 
@@ -79,6 +105,35 @@ function App() {
   };
 
   const completeOrder = () => {
+    // Track origins from ordered items
+    const newOrigins = cartItems
+      .map(item => {
+        const product = products.find(p => p.id === item.productId);
+        return product?.origin;
+      })
+      .filter(origin => origin && originToCountry[origin]);
+
+    // Update tried origins
+    const updatedOrigins = [...new Set([...triedOrigins, ...newOrigins])];
+    setTriedOrigins(updatedOrigins);
+    saveStoredData('aura_tried_origins', updatedOrigins);
+
+    // Add to order history
+    const newOrders = cartItems.map(item => {
+      const product = products.find(p => p.id === item.productId);
+      return {
+        id: Date.now() + Math.random(),
+        productId: item.productId,
+        name: item.name,
+        category: product?.category,
+        origin: product?.origin,
+        timestamp: new Date().toISOString(),
+      };
+    });
+    const updatedHistory = [...orderHistory, ...newOrders];
+    setOrderHistory(updatedHistory);
+    saveStoredData('aura_order_history', updatedHistory);
+
     setIsCheckoutOpen(false);
     setCartItems([]);
     setOrderComplete(true);
@@ -87,7 +142,7 @@ function App() {
 
   // Lock body scroll when modals are open
   useEffect(() => {
-    if (selectedProduct || isCartOpen || isCheckoutOpen) {
+    if (selectedProduct || isCartOpen || isCheckoutOpen || isProfileOpen) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -95,13 +150,44 @@ function App() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [selectedProduct, isCartOpen, isCheckoutOpen]);
+  }, [selectedProduct, isCartOpen, isCheckoutOpen, isProfileOpen]);
+
+  // Calculate earned badges for header indicator
+  const triedCountries = [...new Set(
+    triedOrigins.map(origin => originToCountry[origin]).filter(Boolean)
+  )];
+  const totalOrders = orderHistory.length;
+  const categoryCounts = orderHistory.reduce((acc, order) => {
+    acc[order.category] = (acc[order.category] || 0) + 1;
+    return acc;
+  }, {});
+  const availableOrigins = Object.keys(originToCountry).filter(o => originToCountry[o]).length;
+
+  const earnedBadgeCount = badges.filter(badge => {
+    const req = badge.requirement;
+    switch (req.type) {
+      case 'orders': return totalOrders >= req.count;
+      case 'countries': return triedCountries.length >= req.count;
+      case 'specific-countries': return req.countries.every(c => triedCountries.includes(c));
+      case 'all-origins': return triedOrigins.length >= availableOrigins;
+      case 'category': return (categoryCounts[req.category] || 0) >= req.count;
+      case 'time': return orderHistory.some(order => {
+        const hour = new Date(order.timestamp).getHours();
+        if (req.before) return hour < req.before;
+        if (req.after) return hour >= req.after;
+        return false;
+      });
+      default: return false;
+    }
+  }).length;
 
   return (
     <div className="min-h-screen bg-cream-50">
       <Header
         cartItemCount={cartItemCount}
         onCartClick={() => setIsCartOpen(true)}
+        onProfileClick={() => setIsProfileOpen(true)}
+        badgeCount={earnedBadgeCount}
       />
 
       <main className="pb-24">
@@ -153,6 +239,15 @@ function App() {
           total={cartTotal}
           onClose={() => setIsCheckoutOpen(false)}
           onComplete={completeOrder}
+        />
+      )}
+
+      {/* Bean Journey / Profile Modal */}
+      {isProfileOpen && (
+        <BeanJourney
+          onClose={() => setIsProfileOpen(false)}
+          triedOrigins={triedOrigins}
+          orderHistory={orderHistory}
         />
       )}
 
